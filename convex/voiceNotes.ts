@@ -3,6 +3,10 @@ import { mutation, query, action } from "./_generated/server";
 import { api } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
+// Access environment variable for site URL
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const getSiteUrl = () => (globalThis as any).process?.env?.SITE_URL || "http://localhost:3005";
+
 // Generate upload URL for audio file
 export const generateUploadUrl = mutation({
   args: {},
@@ -121,9 +125,8 @@ export const process = action({
       const audioResponse = await fetch(audioUrl);
       const audioBlob = await audioResponse.blob();
 
-      // Get the app URL - for local dev use localhost, for prod set SITE_URL in Convex dashboard
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const appUrl = (globalThis as any).process?.env?.SITE_URL || "http://localhost:3005";
+      // Get the app URL from Convex environment variable
+      const appUrl = getSiteUrl();
 
       // Transcribe via API route
       const formData = new FormData();
