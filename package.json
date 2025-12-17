@@ -3,15 +3,29 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --port 3005",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^2.0.56",
+    "@ai-sdk/openai": "^2.0.88",
+    "@ai-sdk/react": "^2.0.117",
+    "@radix-ui/react-switch": "^1.2.6",
+    "@xyflow/react": "^12.10.0",
+    "ai": "^5.0.115",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "convex": "^1.31.1",
+    "lucide-react": "^0.561.0",
     "next": "16.0.10",
     "react": "19.2.1",
-    "react-dom": "19.2.1"
+    "react-dom": "19.2.1",
+    "reactflow": "^11.11.4",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.2.1",
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

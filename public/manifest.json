@@ -1,0 +1,25 @@
+{
+  "name": "Memex",
+  "short_name": "Memex",
+  "description": "Your personal knowledge management system with voice notes and AI-powered Zettelkasten",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbf1c7",
+  "theme_color": "#076678",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"]
+}
