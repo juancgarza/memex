@@ -1,96 +1,138 @@
 "use client";
 
 import { Extension, Editor, Range } from "@tiptap/core";
-import Suggestion, { SuggestionProps, SuggestionKeyDownProps } from "@tiptap/suggestion";
+import Suggestion, {
+  SuggestionProps,
+  SuggestionKeyDownProps,
+} from "@tiptap/suggestion";
 import { ReactRenderer } from "@tiptap/react";
 import tippy, { Instance, Props } from "tippy.js";
+import { Group, Command } from "./slash-command-types";
 
-export interface CommandItem {
-  title: string;
-  description: string;
-  icon: string;
-  command: ({ editor, range }: { editor: Editor; range: Range }) => void;
-}
+// Command groups with Lucide icons and search aliases
+export const COMMAND_GROUPS: Group[] = [
+  {
+    name: "format",
+    title: "Format",
+    commands: [
+      {
+        name: "heading1",
+        label: "Heading 1",
+        iconName: "Heading1",
+        description: "Large section heading",
+        aliases: ["h1", "title"],
+        action: (editor) =>
+          editor.chain().focus().setHeading({ level: 1 }).run(),
+      },
+      {
+        name: "heading2",
+        label: "Heading 2",
+        iconName: "Heading2",
+        description: "Medium section heading",
+        aliases: ["h2", "subtitle"],
+        action: (editor) =>
+          editor.chain().focus().setHeading({ level: 2 }).run(),
+      },
+      {
+        name: "heading3",
+        label: "Heading 3",
+        iconName: "Heading3",
+        description: "Small section heading",
+        aliases: ["h3"],
+        action: (editor) =>
+          editor.chain().focus().setHeading({ level: 3 }).run(),
+      },
+      {
+        name: "bulletList",
+        label: "Bullet List",
+        iconName: "List",
+        description: "Unordered list of items",
+        aliases: ["ul", "bullet", "unordered"],
+        action: (editor) => editor.chain().focus().toggleBulletList().run(),
+      },
+      {
+        name: "numberedList",
+        label: "Numbered List",
+        iconName: "ListOrdered",
+        description: "Ordered list of items",
+        aliases: ["ol", "numbered", "ordered"],
+        action: (editor) => editor.chain().focus().toggleOrderedList().run(),
+      },
+      {
+        name: "blockquote",
+        label: "Quote",
+        iconName: "Quote",
+        description: "Add a blockquote",
+        aliases: ["quote", "blockquote"],
+        action: (editor) => editor.chain().focus().setBlockquote().run(),
+      },
+      {
+        name: "codeBlock",
+        label: "Code Block",
+        iconName: "Code",
+        description: "Code block with syntax highlighting",
+        aliases: ["code", "pre"],
+        action: (editor) => editor.chain().focus().setCodeBlock().run(),
+      },
+    ],
+  },
+  {
+    name: "insert",
+    title: "Insert",
+    commands: [
+      {
+        name: "paragraph",
+        label: "Text",
+        iconName: "Pilcrow",
+        description: "Plain paragraph text",
+        aliases: ["p", "text", "paragraph"],
+        action: (editor) => editor.chain().focus().setParagraph().run(),
+      },
+      {
+        name: "horizontalRule",
+        label: "Divider",
+        iconName: "Minus",
+        description: "Insert a horizontal divider",
+        aliases: ["hr", "divider", "line"],
+        action: (editor) => editor.chain().focus().setHorizontalRule().run(),
+      },
+    ],
+  },
+];
 
-export const getSuggestionItems = ({ query }: { query: string }): CommandItem[] => {
-  const items: CommandItem[] = [
-    {
-      title: "Text",
-      description: "Plain paragraph text",
-      icon: "¶",
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setParagraph().run();
-      },
-    },
-    {
-      title: "Heading 1",
-      description: "Large section heading",
-      icon: "H1",
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setHeading({ level: 1 }).run();
-      },
-    },
-    {
-      title: "Heading 2",
-      description: "Medium section heading",
-      icon: "H2",
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setHeading({ level: 2 }).run();
-      },
-    },
-    {
-      title: "Heading 3",
-      description: "Small section heading",
-      icon: "H3",
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setHeading({ level: 3 }).run();
-      },
-    },
-    {
-      title: "Bullet List",
-      description: "Create a bullet list",
-      icon: "•",
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).toggleBulletList().run();
-      },
-    },
-    {
-      title: "Numbered List",
-      description: "Create a numbered list",
-      icon: "1.",
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).toggleOrderedList().run();
-      },
-    },
-    {
-      title: "Quote",
-      description: "Add a blockquote",
-      icon: "❝",
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setBlockquote().run();
-      },
-    },
-    {
-      title: "Code Block",
-      description: "Add a code block",
-      icon: "</>",
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setCodeBlock().run();
-      },
-    },
-    {
-      title: "Divider",
-      description: "Add a horizontal divider",
-      icon: "—",
-      command: ({ editor, range }) => {
-        editor.chain().focus().deleteRange(range).setHorizontalRule().run();
-      },
-    },
-  ];
+// Filter commands based on query, checking both label and aliases
+export const filterCommandGroups = (
+  groups: Group[],
+  query: string,
+  editor: Editor
+): Group[] => {
+  const queryLower = query.toLowerCase().trim();
 
-  return items.filter((item) =>
-    item.title.toLowerCase().includes(query.toLowerCase())
-  );
+  const filteredGroups = groups
+    .map((group) => ({
+      ...group,
+      commands: group.commands.filter((command) => {
+        // Check if command should be hidden
+        if (command.shouldBeHidden?.(editor)) {
+          return false;
+        }
+
+        // Match against label
+        if (command.label.toLowerCase().includes(queryLower)) {
+          return true;
+        }
+
+        // Match against aliases
+        if (command.aliases?.some((alias) => alias.includes(queryLower))) {
+          return true;
+        }
+
+        return false;
+      }),
+    }))
+    .filter((group) => group.commands.length > 0);
+
+  return filteredGroups;
 };
 
 // Import CommandList dynamically to avoid circular deps
@@ -105,14 +147,17 @@ export const renderSuggestion = () => {
   let popup: Instance<Props>[] | null = null;
 
   return {
-    onStart: (props: SuggestionProps<CommandItem>) => {
+    onStart: (props: SuggestionProps<Group[]>) => {
       if (!CommandListComponent) {
         console.error("CommandList component not set");
         return;
       }
 
       component = new ReactRenderer(CommandListComponent, {
-        props,
+        props: {
+          ...props,
+          items: props.items,
+        },
         editor: props.editor,
       });
 
@@ -129,8 +174,11 @@ export const renderSuggestion = () => {
       });
     },
 
-    onUpdate(props: SuggestionProps<CommandItem>) {
-      component?.updateProps(props);
+    onUpdate(props: SuggestionProps<Group[]>) {
+      component?.updateProps({
+        ...props,
+        items: props.items,
+      });
 
       if (!props.clientRect) return;
 
@@ -162,24 +210,49 @@ export const SlashCommands = Extension.create({
     return {
       suggestion: {
         char: "/",
-        command: ({ editor, range, props }: { editor: Editor; range: Range; props: CommandItem }) => {
-          props.command({ editor, range });
+        command: ({
+          editor,
+          range,
+          props,
+        }: {
+          editor: Editor;
+          range: Range;
+          props: Command;
+        }) => {
+          // Delete the slash command text
+          editor.chain().focus().deleteRange(range).run();
+          // Execute the command action
+          props.action(editor);
         },
-        items: getSuggestionItems,
+        items: ({ query, editor }: { query: string; editor: Editor }) => {
+          return filterCommandGroups(COMMAND_GROUPS, query, editor);
+        },
         render: renderSuggestion,
         // Allow slash commands at start of line or after whitespace
         allowSpaces: false,
         startOfLine: false,
         // Allow in empty documents
-        allow: ({ editor, state, range }: { editor: Editor; state: any; range: Range }) => {
+        allow: ({
+          state,
+          range,
+        }: {
+          editor: Editor;
+          state: any;
+          range: Range;
+        }) => {
           // Get the text before the cursor in the current block
           const $from = state.doc.resolve(range.from);
-          const textBefore = $from.parent.textBetween(0, $from.parentOffset, undefined, "\ufffc");
-          
+          const textBefore = $from.parent.textBetween(
+            0,
+            $from.parentOffset,
+            undefined,
+            "\ufffc"
+          );
+
           // Allow if we're at start of block or after whitespace
           const isAtStart = textBefore === "" || textBefore === "/";
           const isAfterWhitespace = /\s\/$/.test(textBefore);
-          
+
           return isAtStart || isAfterWhitespace;
         },
       },
@@ -195,3 +268,6 @@ export const SlashCommands = Extension.create({
     ];
   },
 });
+
+// Re-export types for backward compatibility
+export type { Command as CommandItem, Group, Command };
