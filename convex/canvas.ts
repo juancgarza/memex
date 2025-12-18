@@ -181,3 +181,34 @@ export const getNodesByVoiceNote = query({
       .collect();
   },
 });
+
+// List all notes sorted by updatedAt (for Notes sidebar)
+export const listNotes = query({
+  args: {},
+  handler: async (ctx) => {
+    const nodes = await ctx.db.query("canvasNodes").collect();
+    return nodes
+      .filter((node) => node.type === "note")
+      .sort((a, b) => b.updatedAt - a.updatedAt);
+  },
+});
+
+// Find a note by title (for wiki-link navigation)
+export const findNoteByTitle = query({
+  args: { title: v.string() },
+  handler: async (ctx, args) => {
+    if (!args.title) return null;
+    
+    const nodes = await ctx.db.query("canvasNodes").collect();
+    const notes = nodes.filter((n) => n.type === "note");
+    
+    // Find note where title matches (first line or # heading)
+    return notes.find((note) => {
+      const firstLine = note.content.split("\n")[0];
+      // Handle both plain text and HTML content
+      const cleanLine = firstLine.replace(/<[^>]*>/g, ""); // Remove HTML tags
+      const noteTitle = cleanLine.replace(/^#\s*/, "").trim();
+      return noteTitle.toLowerCase() === args.title.toLowerCase();
+    }) || null;
+  },
+});

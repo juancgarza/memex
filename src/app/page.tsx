@@ -9,6 +9,7 @@ import { ChatInterface } from "@/components/chat/ChatInterface";
 import { MemexCanvas } from "@/components/canvas/MemexCanvas";
 import { SemanticSearch } from "@/components/search/SemanticSearch";
 import { VoiceRecorder } from "@/components/voice/VoiceRecorder";
+import { NotesView } from "@/components/notes/NotesView";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/lib/theme";
 import { useServiceWorker, usePWAInstall, useIsStandalone } from "@/lib/pwa";
@@ -21,9 +22,10 @@ import {
   X,
   Download,
   Plus,
+  FileText,
 } from "lucide-react";
 
-type View = "chat" | "canvas";
+type View = "chat" | "canvas" | "notes";
 
 export default function Home() {
   const [view, setView] = useState<View>("chat");
@@ -185,6 +187,16 @@ export default function Home() {
               >
                 Canvas
               </button>
+              <button
+                onClick={() => setView("notes")}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  view === "notes"
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Notes
+              </button>
             </div>
           )}
         </div>
@@ -256,6 +268,9 @@ export default function Home() {
             <MemexCanvas />
           </div>
         )}
+
+        {/* Notes Panel */}
+        {view === "notes" && <NotesView />}
       </div>
 
       {/* Mobile Bottom Navigation */}
@@ -263,7 +278,7 @@ export default function Home() {
         <nav className="flex items-center justify-around bg-card border-t border-border safe-area-bottom py-2">
           <button
             onClick={() => setView("chat")}
-            className={`flex flex-col items-center gap-1 px-6 py-2 rounded-lg transition-colors ${
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
               view === "chat"
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground"
@@ -274,7 +289,7 @@ export default function Home() {
           </button>
           <button
             onClick={() => setView("canvas")}
-            className={`flex flex-col items-center gap-1 px-6 py-2 rounded-lg transition-colors ${
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
               view === "canvas"
                 ? "text-primary"
                 : "text-muted-foreground hover:text-foreground"
@@ -282,6 +297,17 @@ export default function Home() {
           >
             <LayoutGrid className="h-6 w-6" />
             <span className="text-xs font-medium">Canvas</span>
+          </button>
+          <button
+            onClick={() => setView("notes")}
+            className={`flex flex-col items-center gap-1 px-4 py-2 rounded-lg transition-colors ${
+              view === "notes"
+                ? "text-primary"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            <FileText className="h-6 w-6" />
+            <span className="text-xs font-medium">Notes</span>
           </button>
         </nav>
       )}
