@@ -56,6 +56,17 @@ export default function Home() {
     setView("chat");
   }, [createConversation]);
 
+  const handleNewNote = useCallback(async () => {
+    await createNode({
+      type: "note",
+      content: "# Untitled\n\n",
+      x: 0,
+      y: 0,
+      sourceType: "manual",
+    });
+    setView("notes");
+  }, [createNode]);
+
   // Detect mobile
   useEffect(() => {
     const checkMobile = () => {
@@ -97,11 +108,13 @@ export default function Home() {
       },
       // New chat: g o (open new)
       "g o": () => handleNewChat(),
+      // New note: g n n (go notes + new)
+      "g n n": () => handleNewNote(),
       // Toggle theme: g t
       "g t": () => toggleTheme(),
     });
     return () => unsubscribe();
-  }, [handleNewChat, toggleTheme]);
+  }, [handleNewChat, handleNewNote, toggleTheme]);
 
   const handleAddToCanvas = useCallback(
     async (content: string) => {
