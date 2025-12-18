@@ -4,6 +4,8 @@ import { useEffect, useCallback, useRef, useState } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import HorizontalRule from "@tiptap/extension-horizontal-rule";
+import Bold from "@tiptap/extension-bold";
+import Italic from "@tiptap/extension-italic";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -75,11 +77,25 @@ export function NoteEditor({ noteId, onNavigate }: NoteEditorProps) {
         heading: {
           levels: [1, 2, 3],
         },
-        // Disable StarterKit's horizontalRule
+        // Disable these from StarterKit - we'll add our own without input rules
         horizontalRule: false,
+        bold: false,
+        italic: false,
       }),
-      // Add HorizontalRule back without any input rules
+      // Add HorizontalRule without input rules
       HorizontalRule.extend({
+        addInputRules() {
+          return [];
+        },
+      }),
+      // Add Bold without input rules (no **text** auto-conversion)
+      Bold.extend({
+        addInputRules() {
+          return [];
+        },
+      }),
+      // Add Italic without input rules (no *text* auto-conversion)
+      Italic.extend({
         addInputRules() {
           return [];
         },
