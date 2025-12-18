@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useMutation, useAction } from "convex/react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { api } from "../../convex/_generated/api";
 import { Id } from "../../convex/_generated/dataModel";
 import { ChatSidebar } from "@/components/chat/ChatSidebar";
@@ -26,6 +27,7 @@ import {
 } from "lucide-react";
 
 type View = "chat" | "canvas" | "notes";
+const VIEWS: View[] = ["chat", "canvas", "notes"];
 
 export default function Home() {
   const [view, setView] = useState<View>("chat");
@@ -68,6 +70,50 @@ export default function Home() {
       setSidebarOpen(false);
     }
   }, [view, isMobile]);
+
+  // Keyboard shortcuts
+  // Navigate between views: cmd+[ (prev) and cmd+] (next)
+  useHotkeys("meta+[", (e) => {
+    e.preventDefault();
+    const currentIndex = VIEWS.indexOf(view);
+    const prevIndex = (currentIndex - 1 + VIEWS.length) % VIEWS.length;
+    setView(VIEWS[prevIndex]);
+  }, { enableOnFormTags: false });
+
+  useHotkeys("meta+]", (e) => {
+    e.preventDefault();
+    const currentIndex = VIEWS.indexOf(view);
+    const nextIndex = (currentIndex + 1) % VIEWS.length;
+    setView(VIEWS[nextIndex]);
+  }, { enableOnFormTags: false });
+
+  // Quick jump to views: cmd+1 (chat), cmd+2 (canvas), cmd+3 (notes)
+  useHotkeys("meta+1", (e) => {
+    e.preventDefault();
+    setView("chat");
+  }, { enableOnFormTags: false });
+
+  useHotkeys("meta+2", (e) => {
+    e.preventDefault();
+    setView("canvas");
+  }, { enableOnFormTags: false });
+
+  useHotkeys("meta+3", (e) => {
+    e.preventDefault();
+    setView("notes");
+  }, { enableOnFormTags: false });
+
+  // New chat: cmd+n
+  useHotkeys("meta+n", (e) => {
+    e.preventDefault();
+    handleNewChat();
+  }, { enableOnFormTags: false });
+
+  // Toggle theme: cmd+shift+l
+  useHotkeys("meta+shift+l", (e) => {
+    e.preventDefault();
+    toggleTheme();
+  }, { enableOnFormTags: true });
 
   const handleAddToCanvas = useCallback(
     async (content: string) => {
