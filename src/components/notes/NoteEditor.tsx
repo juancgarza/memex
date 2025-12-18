@@ -8,6 +8,11 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { WikiLink, convertWikiLinksToHTML } from "@/lib/tiptap/wiki-link";
+import { SlashCommands, setCommandListComponent } from "@/lib/tiptap/slash-commands";
+import { CommandList } from "./CommandList";
+
+// Register CommandList component for slash commands
+setCommandListComponent(CommandList);
 
 interface NoteEditorProps {
   noteId: Id<"canvasNodes">;
@@ -70,11 +75,12 @@ export function NoteEditor({ noteId, onNavigate }: NoteEditorProps) {
         },
       }),
       Placeholder.configure({
-        placeholder: "Start writing...",
+        placeholder: 'Type "/" for commands...',
       }),
       WikiLink.configure({
         onLinkClick: handleLinkClick,
       }),
+      SlashCommands,
     ],
     content: "",
     editorProps: {
