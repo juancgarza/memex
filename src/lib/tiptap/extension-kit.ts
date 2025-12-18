@@ -8,11 +8,13 @@ import Italic from "@tiptap/extension-italic";
 import CharacterCount from "@tiptap/extension-character-count";
 import { WikiLink } from "./wiki-link";
 import { SlashCommands } from "./slash-commands";
+import { WikiLinkSuggestion } from "./wiki-link-suggestion";
 
 interface ExtensionKitOptions {
   onLinkClick?: (title: string) => void;
   placeholder?: string;
   characterLimit?: number;
+  enableWikiLinkSuggestion?: boolean;
 }
 
 /**
@@ -23,53 +25,63 @@ export const ExtensionKit = ({
   onLinkClick,
   placeholder = 'Type "/" for commands...',
   characterLimit = 50000,
-}: ExtensionKitOptions = {}) => [
-  // StarterKit with customizations - disable features we override
-  StarterKit.configure({
-    heading: { levels: [1, 2, 3] },
-    horizontalRule: false, // We provide custom one without input rules
-    bold: false, // We provide custom one without input rules
-    italic: false, // We provide custom one without input rules
-  }),
+  enableWikiLinkSuggestion = true,
+}: ExtensionKitOptions = {}) => {
+  const extensions = [
+    // StarterKit with customizations - disable features we override
+    StarterKit.configure({
+      heading: { levels: [1, 2, 3] },
+      horizontalRule: false, // We provide custom one without input rules
+      bold: false, // We provide custom one without input rules
+      italic: false, // We provide custom one without input rules
+    }),
 
-  // HorizontalRule without input rules (prevents *** auto-conversion)
-  HorizontalRule.extend({
-    addInputRules() {
-      return [];
-    },
-  }),
+    // HorizontalRule without input rules (prevents *** auto-conversion)
+    HorizontalRule.extend({
+      addInputRules() {
+        return [];
+      },
+    }),
 
-  // Bold without input rules (prevents **text** auto-conversion)
-  Bold.extend({
-    addInputRules() {
-      return [];
-    },
-  }),
+    // Bold without input rules (prevents **text** auto-conversion)
+    Bold.extend({
+      addInputRules() {
+        return [];
+      },
+    }),
 
-  // Italic without input rules (prevents *text* auto-conversion)
-  Italic.extend({
-    addInputRules() {
-      return [];
-    },
-  }),
+    // Italic without input rules (prevents *text* auto-conversion)
+    Italic.extend({
+      addInputRules() {
+        return [];
+      },
+    }),
 
-  // Placeholder text
-  Placeholder.configure({
-    placeholder,
-  }),
+    // Placeholder text
+    Placeholder.configure({
+      placeholder,
+    }),
 
-  // Character count with limit
-  CharacterCount.configure({
-    limit: characterLimit,
-  }),
+    // Character count with limit
+    CharacterCount.configure({
+      limit: characterLimit,
+    }),
 
-  // Wiki-links [[link]] support
-  WikiLink.configure({
-    onLinkClick,
-  }),
+    // Wiki-links [[link]] support
+    WikiLink.configure({
+      onLinkClick,
+    }),
 
-  // Slash commands
-  SlashCommands,
-];
+    // Slash commands
+    SlashCommands,
+  ];
+
+  // Wiki-link suggestions (typing [[ shows autocomplete)
+  if (enableWikiLinkSuggestion) {
+    extensions.push(WikiLinkSuggestion);
+  }
+
+  return extensions;
+};
 
 export default ExtensionKit;

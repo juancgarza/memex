@@ -1,12 +1,21 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useMemo } from "react";
 import { EditorContent } from "@tiptap/react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { useNoteEditor } from "@/hooks/useNoteEditor";
 import { TextMenu } from "./TextMenu";
+import { WikiLinkList } from "./WikiLinkList";
+import {
+  setWikiLinkListComponent,
+  setGetNoteTitles,
+  WikiLinkSuggestionItem,
+} from "@/lib/tiptap/wiki-link-suggestion";
+
+// Register WikiLinkList component for wiki-link suggestions
+setWikiLinkListComponent(WikiLinkList);
 
 interface NoteEditorProps {
   noteId: Id<"canvasNodes">;
@@ -15,6 +24,7 @@ interface NoteEditorProps {
 
 export function NoteEditor({ noteId, onNavigate }: NoteEditorProps) {
   const note = useQuery(api.canvas.getNodeById, { id: noteId });
+  const notes = useQuery(api.canvas.listNotes);
   const updateNode = useMutation(api.canvas.updateNode);
   const createNode = useMutation(api.canvas.createNode);
 
@@ -26,6 +36,26 @@ export function NoteEditor({ noteId, onNavigate }: NoteEditorProps) {
     api.canvas.findNoteByTitle,
     pendingLinkTitle ? { title: pendingLinkTitle } : "skip"
   );
+
+  // Extract titles from notes for wiki-link suggestions
+  const noteTitles = useMemo<WikiLinkSuggestionItem[]>(() => {
+    if (!notes) return [];
+
+    return notes.map((n) => {
+      // Extract title from first line
+      const firstLine = n.content.split("\n")[0];
+      const title = firstLine.replace(/^#\s*/, "").trim() || "Untitled";
+      return {
+        id: n._id,
+        title,
+      };
+    });
+  }, [notes]);
+
+  // Update the global getter for note titles
+  useEffect(() => {
+    setGetNoteTitles(() => noteTitles);
+  }, [noteTitles]);
 
   // Handle the result of finding a note by title
   useEffect(() => {
