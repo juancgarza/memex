@@ -1,12 +1,13 @@
 "use client";
 
-import { Extension, Editor, Range } from "@tiptap/core";
+import { Extension, Editor } from "@tiptap/core";
 import Suggestion, {
   SuggestionProps,
   SuggestionKeyDownProps,
 } from "@tiptap/suggestion";
 import { ReactRenderer } from "@tiptap/react";
 import tippy, { Instance, Props } from "tippy.js";
+import { PluginKey } from "@tiptap/pm/state";
 import { Group, Command } from "./slash-command-types";
 
 // Command groups with Lucide icons and search aliases
@@ -21,8 +22,9 @@ export const COMMAND_GROUPS: Group[] = [
         iconName: "Heading1",
         description: "Large section heading",
         aliases: ["h1", "title"],
-        action: (editor) =>
-          editor.chain().focus().setHeading({ level: 1 }).run(),
+        action: (editor) => {
+          editor.chain().focus().setNode("heading", { level: 1 }).run();
+        },
       },
       {
         name: "heading2",
@@ -30,8 +32,9 @@ export const COMMAND_GROUPS: Group[] = [
         iconName: "Heading2",
         description: "Medium section heading",
         aliases: ["h2", "subtitle"],
-        action: (editor) =>
-          editor.chain().focus().setHeading({ level: 2 }).run(),
+        action: (editor) => {
+          editor.chain().focus().setNode("heading", { level: 2 }).run();
+        },
       },
       {
         name: "heading3",
@@ -39,8 +42,9 @@ export const COMMAND_GROUPS: Group[] = [
         iconName: "Heading3",
         description: "Small section heading",
         aliases: ["h3"],
-        action: (editor) =>
-          editor.chain().focus().setHeading({ level: 3 }).run(),
+        action: (editor) => {
+          editor.chain().focus().setNode("heading", { level: 3 }).run();
+        },
       },
       {
         name: "bulletList",
@@ -48,7 +52,9 @@ export const COMMAND_GROUPS: Group[] = [
         iconName: "List",
         description: "Unordered list of items",
         aliases: ["ul", "bullet", "unordered"],
-        action: (editor) => editor.chain().focus().toggleBulletList().run(),
+        action: (editor) => {
+          editor.chain().focus().toggleBulletList().run();
+        },
       },
       {
         name: "numberedList",
@@ -56,7 +62,9 @@ export const COMMAND_GROUPS: Group[] = [
         iconName: "ListOrdered",
         description: "Ordered list of items",
         aliases: ["ol", "numbered", "ordered"],
-        action: (editor) => editor.chain().focus().toggleOrderedList().run(),
+        action: (editor) => {
+          editor.chain().focus().toggleOrderedList().run();
+        },
       },
       {
         name: "blockquote",
@@ -64,7 +72,9 @@ export const COMMAND_GROUPS: Group[] = [
         iconName: "Quote",
         description: "Add a blockquote",
         aliases: ["quote", "blockquote"],
-        action: (editor) => editor.chain().focus().setBlockquote().run(),
+        action: (editor) => {
+          editor.chain().focus().wrapIn("blockquote").run();
+        },
       },
       {
         name: "codeBlock",
@@ -72,7 +82,9 @@ export const COMMAND_GROUPS: Group[] = [
         iconName: "Code",
         description: "Code block with syntax highlighting",
         aliases: ["code", "pre"],
-        action: (editor) => editor.chain().focus().setCodeBlock().run(),
+        action: (editor) => {
+          editor.chain().focus().setNode("codeBlock").run();
+        },
       },
     ],
   },
@@ -86,7 +98,9 @@ export const COMMAND_GROUPS: Group[] = [
         iconName: "Pilcrow",
         description: "Plain paragraph text",
         aliases: ["p", "text", "paragraph"],
-        action: (editor) => editor.chain().focus().setParagraph().run(),
+        action: (editor) => {
+          editor.chain().focus().setNode("paragraph").run();
+        },
       },
       {
         name: "horizontalRule",
@@ -94,7 +108,9 @@ export const COMMAND_GROUPS: Group[] = [
         iconName: "Minus",
         description: "Insert a horizontal divider",
         aliases: ["hr", "divider", "line"],
-        action: (editor) => editor.chain().focus().setHorizontalRule().run(),
+        action: (editor) => {
+          editor.chain().focus().setHorizontalRule().run();
+        },
       },
     ],
   },
@@ -138,7 +154,9 @@ export const filterCommandGroups = (
 // Import CommandList dynamically to avoid circular deps
 let CommandListComponent: React.ComponentType<any> | null = null;
 
-export const setCommandListComponent = (component: React.ComponentType<any>) => {
+export const setCommandListComponent = (
+  component: React.ComponentType<any>
+) => {
   CommandListComponent = component;
 };
 
@@ -203,67 +221,64 @@ export const renderSuggestion = () => {
   };
 };
 
+const extensionName = "slashCommands";
+
 export const SlashCommands = Extension.create({
-  name: "slashCommands",
+  name: extensionName,
 
-  addOptions() {
-    return {
-      suggestion: {
-        char: "/",
-        command: ({
-          editor,
-          range,
-          props,
-        }: {
-          editor: Editor;
-          range: Range;
-          props: Command;
-        }) => {
-          // Delete the slash command text
-          editor.chain().focus().deleteRange(range).run();
-          // Execute the command action
-          props.action(editor);
-        },
-        items: ({ query, editor }: { query: string; editor: Editor }) => {
-          return filterCommandGroups(COMMAND_GROUPS, query, editor);
-        },
-        render: renderSuggestion,
-        // Allow slash commands at start of line or after whitespace
-        allowSpaces: false,
-        startOfLine: false,
-        // Allow in empty documents
-        allow: ({
-          state,
-          range,
-        }: {
-          editor: Editor;
-          state: any;
-          range: Range;
-        }) => {
-          // Get the text before the cursor in the current block
-          const $from = state.doc.resolve(range.from);
-          const textBefore = $from.parent.textBetween(
-            0,
-            $from.parentOffset,
-            undefined,
-            "\ufffc"
-          );
-
-          // Allow if we're at start of block or after whitespace
-          const isAtStart = textBefore === "" || textBefore === "/";
-          const isAfterWhitespace = /\s\/$/.test(textBefore);
-
-          return isAtStart || isAfterWhitespace;
-        },
-      },
-    };
-  },
+  priority: 200,
 
   addProseMirrorPlugins() {
     return [
       Suggestion({
         editor: this.editor,
-        ...this.options.suggestion,
+        char: "/",
+        allowSpaces: true,
+        startOfLine: true,
+        pluginKey: new PluginKey(extensionName),
+        allow: ({ state, range }: { state: any; range: any }) => {
+          const $from = state.doc.resolve(range.from);
+          const isRootDepth = $from.depth === 1;
+          const isParagraph = $from.parent.type.name === "paragraph";
+          const isStartOfNode = $from.parent.textContent?.charAt(0) === "/";
+
+          const afterContent = $from.parent.textContent?.substring(
+            $from.parent.textContent?.indexOf("/")
+          );
+          const isValidAfterContent = !afterContent?.endsWith("  ");
+
+          return isRootDepth && isParagraph && isStartOfNode && isValidAfterContent;
+        },
+        command: ({ editor, props }: { editor: Editor; props: any }) => {
+          const { view, state } = editor;
+          const { $head, $from } = view.state.selection;
+
+          const end = $from.pos;
+          // Get text before cursor in current node
+          const textBefore = $head?.nodeBefore?.text || "";
+          const slashIndex = textBefore.lastIndexOf("/");
+          
+          let from: number;
+          if (slashIndex !== -1) {
+            // Delete from the "/" to cursor
+            from = end - (textBefore.length - slashIndex);
+          } else {
+            // Fallback: delete from start of current text node
+            from = end - textBefore.length;
+          }
+
+          // Delete the slash command text
+          const tr = state.tr.deleteRange(from, end);
+          view.dispatch(tr);
+
+          // Execute the command action (transforms the current block)
+          props.action(editor);
+          view.focus();
+        },
+        items: ({ query, editor }: { query: string; editor: Editor }) => {
+          return filterCommandGroups(COMMAND_GROUPS, query, editor) as any;
+        },
+        render: renderSuggestion,
       }),
     ];
   },
