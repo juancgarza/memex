@@ -20,17 +20,21 @@ export function NotesView() {
         onSelect={setSelectedNoteId}
       />
       
-      {selectedNoteId ? (
-        <NoteEditor
-          noteId={selectedNoteId}
-          onNavigate={handleNavigate}
-        />
-      ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground bg-background">
-          <FileText className="w-12 h-12 mb-4 opacity-50" />
-          <p>Select a note or create a new one</p>
-        </div>
-      )}
+      <div className="flex-1 flex flex-col bg-background">
+        {selectedNoteId ? (
+          <NoteEditor
+            noteId={selectedNoteId}
+            onNavigate={handleNavigate}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center text-muted-foreground">
+            <div className="flex flex-col items-center">
+              <FileText className="w-12 h-12 mb-4 opacity-50" />
+              <p>Select a note or create a new one</p>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

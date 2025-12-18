@@ -317,7 +317,11 @@ export default function Home() {
         )}
 
         {/* Notes Panel */}
-        {view === "notes" && <NotesView />}
+        {view === "notes" && (
+          <div className="flex-1 w-full h-full">
+            <NotesView />
+          </div>
+        )}
       </div>
 
       {/* Mobile Bottom Navigation */}
