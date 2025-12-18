@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { useNoteEditor } from "@/hooks/useNoteEditor";
+import { TextMenu } from "./TextMenu";
 
 interface NoteEditorProps {
   noteId: Id<"canvasNodes">;
@@ -94,6 +95,7 @@ export function NoteEditor({ noteId, onNavigate }: NoteEditorProps) {
       <div className="w-full flex justify-center">
         <div className="w-full max-w-2xl px-6 py-12 md:px-12">
           <EditorContent editor={editor} className="note-editor" />
+          {editor && <TextMenu editor={editor} />}
         </div>
       </div>
     </div>
