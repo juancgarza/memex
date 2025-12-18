@@ -75,17 +75,13 @@ export function NoteEditor({ noteId, onNavigate }: NoteEditorProps) {
         heading: {
           levels: [1, 2, 3],
         },
-        // Disable StarterKit's horizontalRule, we'll add our own without input rules
+        // Disable StarterKit's horizontalRule
         horizontalRule: false,
       }),
-      // Add horizontal rule without the automatic *** input rule
-      HorizontalRule.configure({
-        HTMLAttributes: {
-          class: "my-4",
-        },
-      }).extend({
+      // Add HorizontalRule back without any input rules
+      HorizontalRule.extend({
         addInputRules() {
-          return []; // Disable all input rules (no auto *** conversion)
+          return [];
         },
       }),
       Placeholder.configure({
