@@ -1,13 +1,29 @@
 import { anthropic } from "@ai-sdk/anthropic";
+import { openai } from "@ai-sdk/openai";
 import { streamText, UIMessage, convertToModelMessages } from "ai";
+import { MODELS, DEFAULT_MODEL, type ModelId } from "@/lib/models";
 
 export const maxDuration = 30;
 
+function getModel(modelId: ModelId) {
+  const model = MODELS.find((m) => m.id === modelId);
+  if (!model) {
+    // Fallback to default
+    return anthropic(DEFAULT_MODEL);
+  }
+  
+  if (model.provider === "anthropic") {
+    return anthropic(modelId);
+  } else {
+    return openai(modelId);
+  }
+}
+
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  const { messages, model: modelId }: { messages: UIMessage[]; model?: ModelId } = await req.json();
 
   const result = streamText({
-    model: anthropic("claude-sonnet-4-20250514"),
+    model: getModel(modelId || DEFAULT_MODEL),
     system: `You are a helpful assistant in a personal knowledge management system called Memex.
 You help the user organize their thoughts, explore ideas, and make connections between concepts.
 Be concise but thorough. When relevant, suggest connections to previous topics discussed.`,
