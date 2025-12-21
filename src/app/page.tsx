@@ -13,6 +13,7 @@ import { MemexCanvas } from "@/components/canvas/MemexCanvas";
 import { SemanticSearch } from "@/components/search/SemanticSearch";
 import { VoiceRecorder } from "@/components/voice/VoiceRecorder";
 import { NotesView } from "@/components/notes/NotesView";
+import { NotesSidebar } from "@/components/notes/NotesSidebar";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/lib/theme";
 import { useServiceWorker, usePWAInstall, useIsStandalone } from "@/lib/pwa";
@@ -37,6 +38,7 @@ export default function Home() {
     useState<Id<"conversations"> | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [selectedNoteId, setSelectedNoteId] = useState<Id<"canvasNodes"> | null>(null);
   const { theme, toggleTheme } = useTheme();
 
   // PWA hooks
@@ -57,15 +59,17 @@ export default function Home() {
   }, [createConversation]);
 
   const handleNewNote = useCallback(async () => {
-    await createNode({
+    const id = await createNode({
       type: "note",
       content: "# Untitled\n\n",
       x: 0,
       y: 0,
       sourceType: "manual",
     });
+    setSelectedNoteId(id);
     setView("notes");
-  }, [createNode]);
+    if (isMobile) setSidebarOpen(false);
+  }, [createNode, isMobile]);
 
   // Detect mobile
   useEffect(() => {
@@ -165,7 +169,7 @@ export default function Home() {
       <header className="flex items-center justify-between px-4 md:px-6 py-3 border-b border-border bg-card safe-area-top">
         <div className="flex items-center gap-3">
           {/* Mobile menu button */}
-          {isMobile && view === "chat" && (
+          {isMobile && (view === "chat" || view === "notes") && (
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="p-2 -ml-2 rounded-lg hover:bg-muted transition-colors"
@@ -316,10 +320,36 @@ export default function Home() {
           </div>
         )}
 
+        {/* Notes Sidebar */}
+        {view === "notes" && (
+          <div
+            className={`
+              ${isMobile ? "absolute left-0 top-0 bottom-0 z-50 transform transition-transform duration-200" : ""}
+              ${isMobile && !sidebarOpen ? "-translate-x-full" : "translate-x-0"}
+            `}
+          >
+            <NotesSidebar
+              selectedId={selectedNoteId}
+              onSelect={(id) => {
+                setSelectedNoteId(id);
+                if (isMobile) setSidebarOpen(false);
+              }}
+              onClose={() => {
+                if (isMobile) setSidebarOpen(false);
+              }}
+            />
+          </div>
+        )}
+
         {/* Notes Panel */}
         {view === "notes" && (
           <div className="flex-1 w-full h-full">
-            <NotesView />
+            <NotesView
+              selectedNoteId={selectedNoteId}
+              onSelectNote={setSelectedNoteId}
+              isMobile={isMobile}
+              onOpenSidebar={() => setSidebarOpen(true)}
+            />
           </div>
         )}
       </div>
