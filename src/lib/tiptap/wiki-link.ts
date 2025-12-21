@@ -1,5 +1,8 @@
-import { Mark, mergeAttributes } from "@tiptap/core";
+import { Mark, mergeAttributes, markInputRule } from "@tiptap/core";
 import { Plugin, PluginKey } from "@tiptap/pm/state";
+
+// Input rule regex: matches [[text]] and captures the text inside
+const wikiLinkInputRuleRegex = /\[\[([^\]]+)\]\]$/;
 
 export interface WikiLinkOptions {
   HTMLAttributes: Record<string, unknown>;
@@ -72,6 +75,18 @@ export const WikiLink = Mark.create<WikiLinkOptions>({
     };
   },
 
+  addInputRules() {
+    return [
+      markInputRule({
+        find: wikiLinkInputRuleRegex,
+        type: this.type,
+        getAttributes: (match) => {
+          return { title: match[1] };
+        },
+      }),
+    ];
+  },
+
   addProseMirrorPlugins() {
     const onLinkClick = this.options.onLinkClick;
 
@@ -96,17 +111,25 @@ export const WikiLink = Mark.create<WikiLinkOptions>({
   },
 });
 
-// Input rule to convert [[text]] to wiki link
-export const wikiLinkInputRegex = /\[\[([^\]]+)\]\]$/;
-
-// Helper to extract wiki links from text
+// Helper to extract wiki links from text or HTML content
 export function extractWikiLinks(content: string): string[] {
-  const regex = /\[\[([^\]]+)\]\]/g;
   const links: string[] = [];
+  
+  // Extract from raw [[text]] patterns
+  const rawRegex = /\[\[([^\]]+)\]\]/g;
   let match;
-  while ((match = regex.exec(content)) !== null) {
+  while ((match = rawRegex.exec(content)) !== null) {
     links.push(match[1]);
   }
+  
+  // Also extract from HTML data-title attributes (TipTap saves as HTML)
+  const htmlRegex = /data-title="([^"]+)"/g;
+  while ((match = htmlRegex.exec(content)) !== null) {
+    if (!links.includes(match[1])) {
+      links.push(match[1]);
+    }
+  }
+  
   return links;
 }
 

@@ -7,12 +7,14 @@ import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { useNoteEditor } from "@/hooks/useNoteEditor";
 import { TextMenu } from "./TextMenu";
+import { BacklinksPanel } from "./BacklinksPanel";
 import { WikiLinkList } from "./WikiLinkList";
 import {
   setWikiLinkListComponent,
   setGetNoteTitles,
   WikiLinkSuggestionItem,
 } from "@/lib/tiptap/wiki-link-suggestion";
+import { extractWikiLinks } from "@/lib/tiptap/wiki-link";
 
 // Register WikiLinkList component for wiki-link suggestions
 setWikiLinkListComponent(WikiLinkList);
@@ -90,10 +92,11 @@ export function NoteEditor({ noteId, onNavigate }: NoteEditorProps) {
     setPendingLinkTitle(title);
   }, []);
 
-  // Handle content updates
+  // Handle content updates - also extract and save outgoing wiki-links
   const handleUpdate = useCallback(
     (content: string) => {
-      updateNode({ id: noteId, content });
+      const outgoingLinks = extractWikiLinks(content);
+      updateNode({ id: noteId, content, outgoingLinks });
     },
     [updateNode, noteId]
   );
@@ -116,6 +119,14 @@ export function NoteEditor({ noteId, onNavigate }: NoteEditorProps) {
     }
   }, [noteId, note?.content, setContent]);
 
+  // Extract current note title for backlinks query
+  const noteTitle = useMemo(() => {
+    if (!note?.content) return "";
+    const firstLine = note.content.split("\n")[0];
+    const cleanLine = firstLine.replace(/<[^>]*>/g, ""); // Remove HTML tags
+    return cleanLine.replace(/^#\s*/, "").trim();
+  }, [note?.content]);
+
   if (!note) {
     return (
       <div className="flex-1 flex items-center justify-center text-muted-foreground">
@@ -125,13 +136,23 @@ export function NoteEditor({ noteId, onNavigate }: NoteEditorProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto bg-background">
-      <div className="w-full flex justify-center">
-        <div className="w-full max-w-2xl px-6 py-12 md:px-12">
-          <EditorContent editor={editor} className="note-editor" />
-          {editor && <TextMenu editor={editor} />}
+    <div className="flex-1 flex flex-col overflow-hidden bg-background">
+      {/* Main editor area - scrollable */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="w-full flex justify-center">
+          <div className="w-full max-w-2xl px-6 py-12 md:px-12">
+            <EditorContent editor={editor} className="note-editor" />
+            {editor && <TextMenu editor={editor} />}
+          </div>
         </div>
       </div>
+
+      {/* Backlinks panel - fixed at bottom */}
+      <BacklinksPanel
+        noteTitle={noteTitle}
+        currentNoteId={noteId}
+        onNavigate={onNavigate}
+      />
     </div>
   );
 }

@@ -78,6 +78,7 @@ export const updateNode = mutation({
     y: v.optional(v.number()),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
+    outgoingLinks: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
@@ -210,5 +211,67 @@ export const findNoteByTitle = query({
       const noteTitle = cleanLine.replace(/^#\s*/, "").trim();
       return noteTitle.toLowerCase() === args.title.toLowerCase();
     }) || null;
+  },
+});
+
+// Helper to extract title from note content
+function extractNoteTitle(content: string): string {
+  const firstLine = content.split("\n")[0];
+  const cleanLine = firstLine.replace(/<[^>]*>/g, ""); // Remove HTML tags
+  return cleanLine.replace(/^#\s*/, "").trim() || "Untitled";
+}
+
+// Helper to extract wiki links from content (handles both raw [[text]] and HTML data-title)
+function extractWikiLinksFromContent(content: string): string[] {
+  const links: string[] = [];
+  
+  // Extract from raw [[text]] patterns
+  const rawRegex = /\[\[([^\]]+)\]\]/g;
+  let match;
+  while ((match = rawRegex.exec(content)) !== null) {
+    links.push(match[1].toLowerCase());
+  }
+  
+  // Also extract from HTML data-title attributes (TipTap saves as HTML)
+  const htmlRegex = /data-title="([^"]+)"/g;
+  while ((match = htmlRegex.exec(content)) !== null) {
+    const title = match[1].toLowerCase();
+    if (!links.includes(title)) {
+      links.push(title);
+    }
+  }
+  
+  return links;
+}
+
+// Get backlinks for a note by its title (notes that link TO this note via [[wiki-links]])
+export const getWikiLinkBacklinks = query({
+  args: { noteTitle: v.string() },
+  handler: async (ctx, args) => {
+    if (!args.noteTitle) return [];
+    
+    const nodes = await ctx.db.query("canvasNodes").collect();
+    const notes = nodes.filter((n) => n.type === "note");
+    const targetTitle = args.noteTitle.toLowerCase();
+    
+    // Find notes that have this title in their outgoingLinks OR in their content
+    const backlinks = notes.filter((note) => {
+      // Check outgoingLinks array first (if populated)
+      if (note.outgoingLinks?.some(
+        (link) => link.toLowerCase() === targetTitle
+      )) {
+        return true;
+      }
+      
+      // Also check content directly (fallback for notes saved before outgoingLinks was added)
+      const contentLinks = extractWikiLinksFromContent(note.content);
+      return contentLinks.includes(targetTitle);
+    });
+    
+    // Return with extracted titles for display
+    return backlinks.map((note) => ({
+      ...note,
+      title: extractNoteTitle(note.content),
+    }));
   },
 });

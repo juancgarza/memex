@@ -122,12 +122,31 @@ export const WikiLinkSuggestion = Extension.create({
             from = end - textBefore.length;
           }
 
-          // Delete the [[ and query text, then insert wiki link
+          // Delete the [[ and query text, then insert wiki link with proper mark
           const tr = state.tr.deleteRange(from, end);
           view.dispatch(tr);
 
-          // Insert the wiki link
-          editor.chain().focus().insertContent(`[[${props.title}]]`).run();
+          // Insert the wiki link with the wikiLink mark applied, then add a space to exit the mark
+          editor
+            .chain()
+            .focus()
+            .insertContent([
+              {
+                type: "text",
+                text: `[[${props.title}]]`,
+                marks: [
+                  {
+                    type: "wikiLink",
+                    attrs: { title: props.title },
+                  },
+                ],
+              },
+              {
+                type: "text",
+                text: " ",
+              },
+            ])
+            .run();
         },
         items: ({ query }: { query: string }) => {
           const titles = getNoteTitles();
