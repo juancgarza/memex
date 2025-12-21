@@ -13,7 +13,7 @@
   --popover-foreground: 30 12% 23%; /* #3c3836 */
 
   --primary: 194 74% 24%; /* #076678 - Gruvbox blue */
-  --primary-foreground: 48 87% 88%; /* #fbf1c7 */
+  --primary-foreground: 50 100% 91%; /* #F9F5D7 - Gruvbox light0 hard */
 
   --secondary: 42 38% 81%; /* #ebdbb2 */
   --secondary-foreground: 30 12% 23%; /* #3c3836 */
@@ -22,10 +22,10 @@
   --muted-foreground: 30 9% 34%; /* #665c54 */
 
   --accent: 324 41% 34%; /* #8f3f71 - Gruvbox purple */
-  --accent-foreground: 48 87% 88%; /* #fbf1c7 */
+  --accent-foreground: 50 100% 91%; /* #F9F5D7 - Gruvbox light0 hard */
 
   --destructive: 6 78% 45%; /* #cc241d - Gruvbox red */
-  --destructive-foreground: 48 87% 88%; /* #fbf1c7 */
+  --destructive-foreground: 50 100% 91%; /* #F9F5D7 - Gruvbox light0 hard */
 
   --border: 37 22% 65%; /* #bdae93 */
   --input: 37 22% 65%; /* #bdae93 */
