@@ -42,10 +42,14 @@ export const createNode = mutation({
         v.literal("manual"),
         v.literal("voice"),
         v.literal("chat"),
-        v.literal("ai_extracted")
+        v.literal("ai_extracted"),
+        v.literal("web"),
+        v.literal("youtube"),
+        v.literal("readwise")
       )
     ),
     sourceId: v.optional(v.id("voiceNotes")),
+    sourceUrl: v.optional(v.string()),
     parentNodeId: v.optional(v.id("canvasNodes")),
     outgoingLinks: v.optional(v.array(v.string())),
   },
@@ -62,6 +66,7 @@ export const createNode = mutation({
       conversationId: args.conversationId,
       sourceType: args.sourceType ?? "manual",
       sourceId: args.sourceId,
+      sourceUrl: args.sourceUrl,
       parentNodeId: args.parentNodeId,
       outgoingLinks: args.outgoingLinks,
       createdAt: now,

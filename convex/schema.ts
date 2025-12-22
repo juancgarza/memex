@@ -65,10 +65,14 @@ export default defineSchema({
         v.literal("manual"),
         v.literal("voice"),
         v.literal("chat"),
-        v.literal("ai_extracted")
+        v.literal("ai_extracted"),
+        v.literal("web"),
+        v.literal("youtube"),
+        v.literal("readwise")
       )
     ),
     sourceId: v.optional(v.id("voiceNotes")), // Reference to source voice note
+    sourceUrl: v.optional(v.string()), // URL for imported content
     parentNodeId: v.optional(v.id("canvasNodes")), // For atomic splits
     // Wiki links extracted from content
     outgoingLinks: v.optional(v.array(v.string())), // [[link]] targets

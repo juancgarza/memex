@@ -12,6 +12,7 @@
     "@ai-sdk/anthropic": "^2.0.56",
     "@ai-sdk/openai": "^2.0.88",
     "@ai-sdk/react": "^2.0.117",
+    "@mendable/firecrawl-js": "^4.9.3",
     "@radix-ui/react-select": "^2.2.6",
     "@radix-ui/react-switch": "^1.2.6",
     "@tiptap/core": "^3.13.0",
@@ -39,6 +40,7 @@
     "tailwind-merge": "^3.4.0",
     "tinykeys": "^3.0.0",
     "tippy.js": "^6.3.7",
+    "youtube-transcript": "^1.2.1",
     "zod": "^4.2.1",
     "zustand": "^5.0.9"
   },
