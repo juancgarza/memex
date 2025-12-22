@@ -1,20 +1,18 @@
 "use client";
 
-import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Id } from "../../../convex/_generated/dataModel";
 import { FileText, Plus, Trash2, Download } from "lucide-react";
-import { ImportModal } from "./ImportModal";
 
 interface NotesSidebarProps {
   selectedId: Id<"canvasNodes"> | null;
   onSelect: (id: Id<"canvasNodes">) => void;
   onClose?: () => void;
+  onImportClick?: () => void;
 }
 
-export function NotesSidebar({ selectedId, onSelect, onClose }: NotesSidebarProps) {
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+export function NotesSidebar({ selectedId, onSelect, onClose, onImportClick }: NotesSidebarProps) {
   const notes = useQuery(api.canvas.listNotes);
   const createNode = useMutation(api.canvas.createNode);
   const deleteNode = useMutation(api.canvas.deleteNode);
@@ -53,7 +51,7 @@ export function NotesSidebar({ selectedId, onSelect, onClose }: NotesSidebarProp
         <h2 className="font-semibold text-foreground">Notes</h2>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setIsImportModalOpen(true)}
+            onClick={onImportClick}
             className="p-2 hover:bg-muted rounded-lg transition-colors"
             title="Import content"
           >
@@ -113,15 +111,6 @@ export function NotesSidebar({ selectedId, onSelect, onClose }: NotesSidebarProp
         ))}
       </div>
 
-      {/* Import Modal */}
-      <ImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => setIsImportModalOpen(false)}
-        onSuccess={(noteId) => {
-          onSelect(noteId as Id<"canvasNodes">);
-          onClose?.();
-        }}
-      />
     </div>
   );
 }

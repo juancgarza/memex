@@ -14,6 +14,7 @@ import { SemanticSearch } from "@/components/search/SemanticSearch";
 import { VoiceRecorder } from "@/components/voice/VoiceRecorder";
 import { NotesView } from "@/components/notes/NotesView";
 import { NotesSidebar } from "@/components/notes/NotesSidebar";
+import { ImportModal } from "@/components/notes/ImportModal";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/lib/theme";
 import { useServiceWorker, usePWAInstall, useIsStandalone } from "@/lib/pwa";
@@ -39,6 +40,7 @@ export default function Home() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [selectedNoteId, setSelectedNoteId] = useState<Id<"canvasNodes"> | null>(null);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const { theme, toggleTheme } = useTheme();
 
   // PWA hooks
@@ -351,6 +353,7 @@ export default function Home() {
               onClose={() => {
                 if (isMobile) setSidebarOpen(false);
               }}
+              onImportClick={() => setIsImportModalOpen(true)}
             />
           </div>
         )}
@@ -428,6 +431,17 @@ export default function Home() {
           }}
         />
       </div>
+
+      {/* Import Modal */}
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={(noteId) => {
+          setSelectedNoteId(noteId as Id<"canvasNodes">);
+          setView("notes");
+          if (isMobile) setSidebarOpen(false);
+        }}
+      />
     </div>
   );
 }
