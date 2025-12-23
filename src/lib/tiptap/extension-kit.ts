@@ -57,9 +57,15 @@ export const ExtensionKit = ({
       },
     }),
 
-    // Placeholder text
+    // Placeholder text with support for heading placeholders
     Placeholder.configure({
-      placeholder,
+      placeholder: ({ node }) => {
+        if (node.type.name === "heading" && node.attrs.level === 1) {
+          return "Untitled";
+        }
+        return placeholder;
+      },
+      includeChildren: true,
     }),
 
     // Character count with limit
