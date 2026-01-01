@@ -1,7 +1,7 @@
 "use client";
 
 import { Handle, Position, NodeProps } from "@xyflow/react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 interface NoteNodeData {
   content: string;
@@ -10,11 +10,30 @@ interface NoteNodeData {
   onFindRelated: () => void;
 }
 
+// Strip HTML tags and get clean text preview
+function stripHtml(html: string): string {
+  return html
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Extract title from content (first heading or first line)
+function extractTitle(content: string): string {
+  const text = stripHtml(content);
+  const firstLine = text.split(/\n/)[0] || text.slice(0, 50);
+  return firstLine.replace(/^#+\s*/, "").trim().slice(0, 50) || "Untitled";
+}
+
 export function NoteNode({ data }: NodeProps) {
   const { content, onContentChange, onDelete, onFindRelated } =
     data as unknown as NoteNodeData;
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(content);
+  
+  // Get clean text for display
+  const displayText = useMemo(() => stripHtml(content), [content]);
+  const title = useMemo(() => extractTitle(content), [content]);
 
   const handleBlur = () => {
     setIsEditing(false);
@@ -102,9 +121,12 @@ export function NoteNode({ data }: NodeProps) {
       ) : (
         <div
           onClick={() => setIsEditing(true)}
-          className="text-foreground text-sm cursor-text whitespace-pre-wrap"
+          className="text-foreground cursor-text"
         >
-          {content}
+          <div className="font-semibold text-sm mb-1">{title}</div>
+          <div className="text-xs text-muted-foreground line-clamp-3">
+            {displayText.slice(title.length).trim() || "Click to edit..."}
+          </div>
         </div>
       )}
 
