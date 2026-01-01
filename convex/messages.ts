@@ -55,3 +55,10 @@ export const updateEmbedding = mutation({
     });
   },
 });
+
+export const remove = mutation({
+  args: { id: v.id("messages") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id);
+  },
+});
