@@ -270,7 +270,16 @@ export default function Home() {
       </header>
 
       {/* Semantic Search */}
-      <SemanticSearch />
+      <SemanticSearch
+        onNavigateToMessage={(conversationId) => {
+          setSelectedConversation(conversationId);
+          setView("chat");
+        }}
+        onNavigateToNode={(nodeId) => {
+          setSelectedNoteId(nodeId);
+          setView("notes");
+        }}
+      />
 
       {/* Main Content */}
       <div className="flex-1 flex overflow-hidden relative">

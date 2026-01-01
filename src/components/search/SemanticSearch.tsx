@@ -3,15 +3,22 @@
 import { useState } from "react";
 import { useAction } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { Id } from "../../../convex/_generated/dataModel";
 
 interface SearchResult {
   _id: string;
   content: string;
   score: number;
   type: "message" | "node";
+  conversationId?: string; // For messages, to enable navigation
 }
 
-export function SemanticSearch() {
+interface SemanticSearchProps {
+  onNavigateToMessage?: (conversationId: Id<"conversations">) => void;
+  onNavigateToNode?: (nodeId: Id<"canvasNodes">) => void;
+}
+
+export function SemanticSearch({ onNavigateToMessage, onNavigateToNode }: SemanticSearchProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -34,6 +41,7 @@ export function SemanticSearch() {
           content: m.content as string,
           score: m.score as number,
           type: "message" as const,
+          conversationId: m.conversationId as string | undefined,
         }));
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -132,6 +140,15 @@ export function SemanticSearch() {
             {results.map((result) => (
               <div
                 key={result._id}
+                onClick={() => {
+                  if (result.type === "message" && result.conversationId && onNavigateToMessage) {
+                    onNavigateToMessage(result.conversationId as Id<"conversations">);
+                    setIsExpanded(false);
+                  } else if (result.type === "node" && onNavigateToNode) {
+                    onNavigateToNode(result._id as Id<"canvasNodes">);
+                    setIsExpanded(false);
+                  }
+                }}
                 className="p-3 bg-secondary/50 hover:bg-secondary rounded-lg cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -142,7 +159,7 @@ export function SemanticSearch() {
                         : "bg-[hsl(var(--node-note-accent))]/20 text-[hsl(var(--node-note-accent))] border border-[hsl(var(--node-note-accent))]/30"
                     }`}
                   >
-                    {result.type === "message" ? "Chat" : "Canvas"}
+                    {result.type === "message" ? "Chat" : "Note"}
                   </span>
                   <span className="text-muted-foreground text-xs">
                     {(result.score * 100).toFixed(0)}% match
