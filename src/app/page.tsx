@@ -18,6 +18,7 @@ import { ImportModal } from "@/components/notes/ImportModal";
 import { Switch } from "@/components/ui/switch";
 import { useTheme } from "@/lib/theme";
 import { useServiceWorker, usePWAInstall, useIsStandalone } from "@/lib/pwa";
+import { UserButton } from "@clerk/nextjs";
 import {
   Sun,
   Moon,
@@ -256,6 +257,9 @@ export default function Home() {
             />
             <Moon className="h-4 w-4 text-muted-foreground" />
           </div>
+
+          {/* User Account */}
+          <UserButton afterSignOutUrl="/sign-in" />
 
           {/* Desktop View Toggle */}
           {!isMobile && (
