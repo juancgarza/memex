@@ -4,6 +4,7 @@ import { api, internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 // Internal mutation to update message embedding
+// Note: Internal mutations are only called by actions that have already verified auth
 export const updateMessageEmbedding = internalMutation({
   args: {
     id: v.id("messages"),
@@ -36,6 +37,12 @@ export const embedMessage = action({
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    // Verify message belongs to user via the query (which has auth checks)
+    const message = await ctx.runQuery(api.messages.getById, {
+      id: args.messageId,
+    });
+    if (!message) throw new Error("Message not found or unauthorized");
+
     // Call OpenAI embedding API
     const response = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
@@ -75,6 +82,10 @@ export const embedCanvasNode = action({
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    // Verify node belongs to user via the query (which has auth checks)
+    const node = await ctx.runQuery(api.canvas.getNodeById, { id: args.nodeId });
+    if (!node) throw new Error("Node not found or unauthorized");
+
     const response = await fetch("https://api.openai.com/v1/embeddings", {
       method: "POST",
       headers: {
@@ -172,23 +183,36 @@ export const findRelated = action({
       limit: args.limit ?? 5,
     });
 
-    // Fetch full documents
+    // Fetch full documents and filter by user ownership using auth-checked queries
     const messages: (RelatedMessage | null)[] = await Promise.all(
       messageResults.map(async (r: { _id: Id<"messages">; _score: number }) => {
+        // Use the auth-checked query - will return null if not user's message
         const msg = await ctx.runQuery(api.messages.getById, { id: r._id });
         return msg
-          ? { ...msg, _id: msg._id as string, conversationId: msg.conversationId as string, score: r._score, type: "message" as const }
+          ? {
+              ...msg,
+              _id: msg._id as string,
+              conversationId: msg.conversationId as string,
+              score: r._score,
+              type: "message" as const,
+            }
           : null;
-      }),
+      })
     );
 
     const nodes: (RelatedNode | null)[] = await Promise.all(
       nodeResults.map(async (r: { _id: Id<"canvasNodes">; _score: number }) => {
+        // Use the auth-checked query - will return null if not user's node
         const node = await ctx.runQuery(api.canvas.getNodeById, { id: r._id });
         return node
-          ? { ...node, _id: node._id as string, score: r._score, type: "node" as const }
+          ? {
+              ...node,
+              _id: node._id as string,
+              score: r._score,
+              type: "node" as const,
+            }
           : null;
-      }),
+      })
     );
 
     return {
