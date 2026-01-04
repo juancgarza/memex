@@ -1,24 +1,51 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, QueryCtx, MutationCtx } from "./_generated/server";
+
+// Helper to get authenticated user
+async function getAuthenticatedUser(ctx: QueryCtx | MutationCtx) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) throw new Error("Unauthorized");
+  return identity;
+}
 
 export const listNodes = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("canvasNodes").collect();
+    const identity = await getAuthenticatedUser(ctx);
+    return await ctx.db
+      .query("canvasNodes")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .collect();
   },
 });
 
 export const getNodeById = query({
   args: { id: v.id("canvasNodes") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    const identity = await getAuthenticatedUser(ctx);
+    const node = await ctx.db.get(args.id);
+    if (!node || node.userId !== identity.subject) {
+      return null;
+    }
+    return node;
   },
 });
 
 export const listEdges = query({
   args: {},
   handler: async (ctx) => {
-    return await ctx.db.query("canvasEdges").collect();
+    const identity = await getAuthenticatedUser(ctx);
+    // Get user's nodes first, then filter edges
+    const userNodes = await ctx.db
+      .query("canvasNodes")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .collect();
+    const userNodeIds = new Set(userNodes.map((n) => n._id));
+
+    const allEdges = await ctx.db.query("canvasEdges").collect();
+    return allEdges.filter(
+      (edge) => userNodeIds.has(edge.source) && userNodeIds.has(edge.target)
+    );
   },
 });
 
@@ -27,7 +54,7 @@ export const createNode = mutation({
     type: v.union(
       v.literal("text"),
       v.literal("chat_reference"),
-      v.literal("note"),
+      v.literal("note")
     ),
     content: v.string(),
     x: v.number(),
@@ -54,8 +81,10 @@ export const createNode = mutation({
     outgoingLinks: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const identity = await getAuthenticatedUser(ctx);
     const now = Date.now();
     return await ctx.db.insert("canvasNodes", {
+      userId: identity.subject,
       type: args.type,
       content: args.content,
       x: args.x,
@@ -86,9 +115,15 @@ export const updateNode = mutation({
     outgoingLinks: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const identity = await getAuthenticatedUser(ctx);
+    const node = await ctx.db.get(args.id);
+    if (!node || node.userId !== identity.subject) {
+      throw new Error("Not found");
+    }
+
     const { id, ...updates } = args;
     const filteredUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([_, v]) => v !== undefined),
+      Object.entries(updates).filter(([, v]) => v !== undefined)
     );
 
     await ctx.db.patch(id, {
@@ -104,6 +139,12 @@ export const updateNodeEmbedding = mutation({
     embedding: v.array(v.float64()),
   },
   handler: async (ctx, args) => {
+    const identity = await getAuthenticatedUser(ctx);
+    const node = await ctx.db.get(args.id);
+    if (!node || node.userId !== identity.subject) {
+      throw new Error("Not found");
+    }
+
     await ctx.db.patch(args.id, {
       embedding: args.embedding,
     });
@@ -113,6 +154,12 @@ export const updateNodeEmbedding = mutation({
 export const deleteNode = mutation({
   args: { id: v.id("canvasNodes") },
   handler: async (ctx, args) => {
+    const identity = await getAuthenticatedUser(ctx);
+    const node = await ctx.db.get(args.id);
+    if (!node || node.userId !== identity.subject) {
+      throw new Error("Not found");
+    }
+
     // Delete connected edges
     const sourceEdges = await ctx.db
       .query("canvasEdges")
@@ -139,6 +186,20 @@ export const createEdge = mutation({
     label: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const identity = await getAuthenticatedUser(ctx);
+
+    // Verify both nodes belong to user
+    const sourceNode = await ctx.db.get(args.source);
+    const targetNode = await ctx.db.get(args.target);
+    if (
+      !sourceNode ||
+      !targetNode ||
+      sourceNode.userId !== identity.subject ||
+      targetNode.userId !== identity.subject
+    ) {
+      throw new Error("Not found");
+    }
+
     return await ctx.db.insert("canvasEdges", {
       source: args.source,
       target: args.target,
@@ -151,6 +212,17 @@ export const createEdge = mutation({
 export const deleteEdge = mutation({
   args: { id: v.id("canvasEdges") },
   handler: async (ctx, args) => {
+    const identity = await getAuthenticatedUser(ctx);
+
+    const edge = await ctx.db.get(args.id);
+    if (!edge) throw new Error("Not found");
+
+    // Verify edge belongs to user's nodes
+    const sourceNode = await ctx.db.get(edge.source);
+    if (!sourceNode || sourceNode.userId !== identity.subject) {
+      throw new Error("Not found");
+    }
+
     await ctx.db.delete(args.id);
   },
 });
@@ -159,17 +231,28 @@ export const deleteEdge = mutation({
 export const getBacklinks = query({
   args: { nodeId: v.id("canvasNodes") },
   handler: async (ctx, args) => {
+    const identity = await getAuthenticatedUser(ctx);
+
+    // Verify node belongs to user
+    const targetNode = await ctx.db.get(args.nodeId);
+    if (!targetNode || targetNode.userId !== identity.subject) {
+      return [];
+    }
+
     // Get edges where this node is the target
     const incomingEdges = await ctx.db
       .query("canvasEdges")
       .withIndex("by_target", (q) => q.eq("target", args.nodeId))
       .collect();
 
-    // Get source nodes with edge labels
+    // Get source nodes with edge labels (only user's nodes)
     const sourceNodes = await Promise.all(
       incomingEdges.map(async (edge) => {
         const node = await ctx.db.get(edge.source);
-        return node ? { ...node, edgeLabel: edge.label } : null;
+        if (node && node.userId === identity.subject) {
+          return { ...node, edgeLabel: edge.label };
+        }
+        return null;
       })
     );
 
@@ -181,10 +264,15 @@ export const getBacklinks = query({
 export const getNodesByVoiceNote = query({
   args: { voiceNoteId: v.id("voiceNotes") },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const identity = await getAuthenticatedUser(ctx);
+
+    const nodes = await ctx.db
       .query("canvasNodes")
       .withIndex("by_sourceId", (q) => q.eq("sourceId", args.voiceNoteId))
       .collect();
+
+    // Filter to only user's nodes
+    return nodes.filter((node) => node.userId === identity.subject);
   },
 });
 
@@ -192,7 +280,13 @@ export const getNodesByVoiceNote = query({
 export const listNotes = query({
   args: {},
   handler: async (ctx) => {
-    const nodes = await ctx.db.query("canvasNodes").collect();
+    const identity = await getAuthenticatedUser(ctx);
+
+    const nodes = await ctx.db
+      .query("canvasNodes")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .collect();
+
     return nodes
       .filter((node) => node.type === "note")
       .sort((a, b) => b.updatedAt - a.updatedAt);
@@ -203,19 +297,27 @@ export const listNotes = query({
 export const findNoteByTitle = query({
   args: { title: v.string() },
   handler: async (ctx, args) => {
+    const identity = await getAuthenticatedUser(ctx);
+
     if (!args.title) return null;
-    
-    const nodes = await ctx.db.query("canvasNodes").collect();
+
+    const nodes = await ctx.db
+      .query("canvasNodes")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .collect();
+
     const notes = nodes.filter((n) => n.type === "note");
-    
+
     // Find note where title matches (first line or # heading)
-    return notes.find((note) => {
-      const firstLine = note.content.split("\n")[0];
-      // Handle both plain text and HTML content
-      const cleanLine = firstLine.replace(/<[^>]*>/g, ""); // Remove HTML tags
-      const noteTitle = cleanLine.replace(/^#\s*/, "").trim();
-      return noteTitle.toLowerCase() === args.title.toLowerCase();
-    }) || null;
+    return (
+      notes.find((note) => {
+        const firstLine = note.content.split("\n")[0];
+        // Handle both plain text and HTML content
+        const cleanLine = firstLine.replace(/<[^>]*>/g, ""); // Remove HTML tags
+        const noteTitle = cleanLine.replace(/^#\s*/, "").trim();
+        return noteTitle.toLowerCase() === args.title.toLowerCase();
+      }) || null
+    );
   },
 });
 
@@ -229,14 +331,14 @@ function extractNoteTitle(content: string): string {
 // Helper to extract wiki links from content (handles both raw [[text]] and HTML data-title)
 function extractWikiLinksFromContent(content: string): string[] {
   const links: string[] = [];
-  
+
   // Extract from raw [[text]] patterns
   const rawRegex = /\[\[([^\]]+)\]\]/g;
   let match;
   while ((match = rawRegex.exec(content)) !== null) {
     links.push(match[1].toLowerCase());
   }
-  
+
   // Also extract from HTML data-title attributes (TipTap saves as HTML)
   const htmlRegex = /data-title="([^"]+)"/g;
   while ((match = htmlRegex.exec(content)) !== null) {
@@ -245,7 +347,7 @@ function extractWikiLinksFromContent(content: string): string[] {
       links.push(title);
     }
   }
-  
+
   return links;
 }
 
@@ -253,14 +355,22 @@ function extractWikiLinksFromContent(content: string): string[] {
 export const findDailyNote = query({
   args: { dateString: v.string() }, // Format: "YYYY-MM-DD"
   handler: async (ctx, args) => {
-    const nodes = await ctx.db.query("canvasNodes").collect();
+    const identity = await getAuthenticatedUser(ctx);
+
+    const nodes = await ctx.db
+      .query("canvasNodes")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .collect();
+
     const notes = nodes.filter((n) => n.type === "note");
-    
+
     // Look for a note with title matching the date
-    return notes.find((note) => {
-      const title = extractNoteTitle(note.content);
-      return title === args.dateString;
-    }) || null;
+    return (
+      notes.find((note) => {
+        const title = extractNoteTitle(note.content);
+        return title === args.dateString;
+      }) || null
+    );
   },
 });
 
@@ -268,15 +378,22 @@ export const findDailyNote = query({
 export const createDailyNote = mutation({
   args: { dateString: v.string() }, // Format: "YYYY-MM-DD"
   handler: async (ctx, args) => {
+    const identity = await getAuthenticatedUser(ctx);
+
     const now = Date.now();
     const date = new Date(args.dateString);
-    const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
-    const monthDay = date.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-    
+    const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+    const monthDay = date.toLocaleDateString("en-US", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
     // Use HTML format for TipTap editor
     const content = `<h1>${args.dateString}</h1><h2>${dayName}, ${monthDay}</h2><h3>Morning</h3><ul><li><p></p></li></ul><h3>Tasks</h3><ul data-type="taskList"><li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><div><p></p></div></li></ul><h3>Notes</h3><p></p><h3>Evening Reflection</h3><p></p>`;
-    
+
     return await ctx.db.insert("canvasNodes", {
+      userId: identity.subject,
       type: "note",
       content,
       x: 0,
@@ -294,26 +411,32 @@ export const createDailyNote = mutation({
 export const getWikiLinkBacklinks = query({
   args: { noteTitle: v.string() },
   handler: async (ctx, args) => {
+    const identity = await getAuthenticatedUser(ctx);
+
     if (!args.noteTitle) return [];
-    
-    const nodes = await ctx.db.query("canvasNodes").collect();
+
+    const nodes = await ctx.db
+      .query("canvasNodes")
+      .withIndex("by_user", (q) => q.eq("userId", identity.subject))
+      .collect();
+
     const notes = nodes.filter((n) => n.type === "note");
     const targetTitle = args.noteTitle.toLowerCase();
-    
+
     // Find notes that have this title in their outgoingLinks OR in their content
     const backlinks = notes.filter((note) => {
       // Check outgoingLinks array first (if populated)
-      if (note.outgoingLinks?.some(
-        (link) => link.toLowerCase() === targetTitle
-      )) {
+      if (
+        note.outgoingLinks?.some((link) => link.toLowerCase() === targetTitle)
+      ) {
         return true;
       }
-      
+
       // Also check content directly (fallback for notes saved before outgoingLinks was added)
       const contentLinks = extractWikiLinksFromContent(note.content);
       return contentLinks.includes(targetTitle);
     });
-    
+
     // Return with extracted titles for display
     return backlinks.map((note) => ({
       ...note,
